@@ -57,7 +57,7 @@ set -g @plugin 'dgmora/tmux-project-switcher'
 
 The default configuration assumes that you have a file structure as defined in the beginning:
 - A root folder with all your projects in `$HOME/src`.
-- Your projects are at depth `3` from that folder. This is important because of what you see
+- Your projects are at depth `3` from that folder. This is important becaus what you see
 in the popup will be all folders at that depth from the root. 1st level would be `github.com`,
 second `dgmora` and third `tmux-project-switcher`.
 - The "meaningful name" of the project is the last `2` folders. i.e. `dgmora/tmux-project-switcher`.
@@ -71,10 +71,12 @@ These settings can be overwritten. To overwrite the root folder, these settings 
 `$HOME/src`
 
 For the depth:
-
 `TMUX_PROJECT_SWITCHER_PROJECT_DEPTH` if set.
 `3`
 
 For the number of folders used to name the session:
 `TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT` if set.
 `2`
+
+To change the popup itself, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`.
+The default is `fzf-tmux -w80% -h100% --preview ''`
