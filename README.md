@@ -2,7 +2,7 @@
 
 Switch between tmux sessions that represent a project/repo.
 
-Given you have a root folder with all your repos like:
+Given you have a root folder with all your projects like:
 
 ```
 $HOME
