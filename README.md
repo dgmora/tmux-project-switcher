@@ -63,6 +63,11 @@ second `dgmora` and third `tmux-project-switcher`.
 - The "meaningful name" of the project is the last `2` folders. i.e. `dgmora/tmux-project-switcher`.
 this will be used for the tmux session name. 2 is used because of git forks. 1 can be used but
 won't work super well if you have forks
+- The default keys is `-n C-m-p`. So `ctrl + opt + P` (_without_ prefix). You can overwrite that with:
+```
+set -g @switcher-key 'C-M-t' # This would be ctrl + M + t with prefix
+
+```
 
 These settings can be overwritten. To overwrite the root folder, these settings are taken into account:
 
@@ -80,3 +85,8 @@ For the number of folders used to name the session:
 
 To change the popup itself, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`.
 The default is `fzf-tmux -w80% -h100% --preview ''`
+
+## Credits
+
+[TPM](https://github.com/tmux-plugins/tpm) for making it so easy to create tmux plugins
+https://github.com/schasse/tmux-jump for inspiration on how to make it work with ruby!
