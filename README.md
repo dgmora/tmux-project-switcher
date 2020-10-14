@@ -32,9 +32,14 @@ set -g @plugin 'dgmora/tmux-project-switcher'
 
 `tmux-prefix` + `I` to install the plugin
 
+## Usage
+
+Follow the setup section and use `ctrl + opt + p` to see a list of repos/sessions. Note
+that it's expected that you are within tmux when running this.
+
 ## Setup
 
-The default configuration assumes that you have a file structure as defined like this:
+The default configuration assumes that you have a file structure like this:
 
 ```
 $HOME
@@ -58,28 +63,29 @@ second `dgmora` and third `tmux-project-switcher`.
 - The "meaningful name" of the project is the last `2` folders. i.e. `dgmora/tmux-project-switcher`.
 this will be used for the tmux session name. 2 is used because of git forks. 1 can be used but
 won't work super well if you have forks
-- The default key to trigger the switcher is `-n C-m-p`. So `ctrl + opt + P` (_without_ prefix). You can overwrite that by adding this to your `tmux.conf`:
+- The default key to trigger the switcher is `-n C-m-p`, so `ctrl + opt + P` (_without_ prefix).
+ 
+### Changing default settings
+
+Most of settings can be overwritten so you can use a different file structure.
+
+You can overwrite the **default key** by adding this to your `tmux.conf`:
+
 ```
 set -g @switcher-key 'C-M-t' # This would be ctrl + M + t with prefix
-
+set -g @switcher-key '-n C-M-i' # This would be ctrl + M + i without prefix
 ```
 
-These settings can be overwritten. To overwrite the root folder, these settings are taken into account:
+Note that with some keys you can have issues with `vim`, so it might be that some of them don't work.
 
-`GH_BASE_DIR` if set (used by [`gh`](https://github.com/jdxcode/gh) too)
-`TMUX_PROJECT_SWITCHER_ROOT_FOLDER` if set
-`$HOME/src`
+To overwrite the **base folder**, these settings are taken into account: `GH_BASE_DIR` if set
+(used by [`gh`](https://github.com/jdxcode/gh) too). `TMUX_PROJECT_SWITCHER_ROOT_FOLDER` if set. Or `$HOME/src` as default
 
-For the depth:
-`TMUX_PROJECT_SWITCHER_PROJECT_DEPTH` if set.
-`3`
+For the **depth**: `TMUX_PROJECT_SWITCHER_PROJECT_DEPTH` if set, or `3` 
 
-For the number of folders used to name the session:
-`TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT` if set.
-`2`
+For the number of folders used to **name** the session: `TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT` if set,  `2`
 
-To change the popup itself, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`.
-The default is `fzf-tmux -w80% -h100% --preview ''`
+To change the **popup itself**, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`. The default is `fzf-tmux -w80% -h100% --preview ''`
 
 ## Credits
 
