@@ -9,7 +9,10 @@ BIN_DIR="$REPO_DIR/bin"
 BINARY="$BIN_DIR/tmux-project-switcher"
 BUILD_SCRIPT="$CURRENT_DIR/build-project-switcher.sh"
 
-if [ ! -x "$BINARY" ]; then
+if [ ! -x "$BINARY" ] || \
+   [ "$CURRENT_DIR/project-switcher.go" -nt "$BINARY" ] || \
+   [ "$REPO_DIR/go.mod" -nt "$BINARY" ] || \
+   [ "$REPO_DIR/go.sum" -nt "$BINARY" ]; then
     "$BUILD_SCRIPT"
 fi
 
