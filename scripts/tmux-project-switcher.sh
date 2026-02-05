@@ -31,6 +31,10 @@ ENTRIES=$("$BINARY" \
 
 SESSION_NAME=$(printf '%s\n' "$ENTRIES" | cut -f1 | eval "$TMUX_PROJECT_SWITCHER_FZF_COMMAND" || true)
 
+if [ -z "$SESSION_NAME" ]; then
+    exit 0
+fi
+
 PATH_FOR_SESSION=$(printf '%s\n' "$ENTRIES" | awk -F'\t' -v target="$SESSION_NAME" '($1 == target) { print $2; exit }')
 
 if [ -n "$PATH_FOR_SESSION" ]; then
