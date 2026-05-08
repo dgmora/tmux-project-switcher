@@ -25,7 +25,8 @@ const (
 	entryKindSession entryKind = "session"
 	entryKindDivider entryKind = "divider"
 
-	dividerName = "────────────────────────────────────────────────"
+	dividerName         = "────────────────────────────────────────────────"
+	sessionBranchPrefix = ""
 )
 
 type entry struct {
@@ -125,14 +126,17 @@ func mergeEntries(projects map[string]string, sessions []string) []entry {
 	}
 
 	sortEntriesByName(folders)
-	sortEntriesByName(sessionEntries)
+	sortSessionEntriesForDefaultLayout(sessionEntries)
 
 	entries := make([]entry, 0, len(folders)+len(sessionEntries)+1)
-	entries = append(entries, folders...)
+	// fzf's default layout renders earlier input lines lower in the popup.
+	// Emit entries in reverse visual order so the picker shows folders above
+	// the divider and sessions below it.
+	entries = append(entries, sessionEntries...)
 	if len(folders) > 0 && len(sessionEntries) > 0 {
 		entries = append(entries, entry{kind: entryKindDivider, name: dividerName})
 	}
-	entries = append(entries, sessionEntries...)
+	entries = append(entries, folders...)
 
 	return entries
 }
@@ -218,6 +222,19 @@ func listSessions() ([]string, error) {
 
 func sortEntriesByName(entries []entry) {
 	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].name < entries[j].name
+	})
+}
+
+func sortSessionEntriesForDefaultLayout(entries []entry) {
+	sort.Slice(entries, func(i, j int) bool {
+		iIsBranch := strings.HasPrefix(entries[i].name, sessionBranchPrefix)
+		jIsBranch := strings.HasPrefix(entries[j].name, sessionBranchPrefix)
+		if iIsBranch != jIsBranch {
+			// Branch sessions are emitted earlier so fzf renders them lower than
+			// regular sessions in the default layout.
+			return iIsBranch
+		}
 		return entries[i].name < entries[j].name
 	})
 }

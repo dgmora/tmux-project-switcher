@@ -90,7 +90,8 @@ For the **depth**: `TMUX_PROJECT_SWITCHER_PROJECT_DEPTH` if set, or `3`
 
 For the number of folders used to **name** the session: `TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT` if set,  `2`
 
-To change the **popup itself**, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`. The default is `fzf-tmux -w80% -h100% --preview ''`
+To change the **popup itself**, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`. The default is `fzf-tmux -w80% -h100% --no-sort --preview ''`.
+Keep `--no-sort` if you want the project/session sections to stay grouped while searching.
 
 ## Credits
 
