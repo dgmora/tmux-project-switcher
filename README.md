@@ -37,6 +37,11 @@ set -g @plugin 'dgmora/tmux-project-switcher'
 Follow the setup section and use `ctrl + opt + p` to see a list of repos/sessions. Note
 that it's expected that you are within tmux when running this.
 
+Projects without a running tmux session are shown in the top section of the picker.
+Entries that already have a tmux session, plus any unmatched tmux sessions, are shown
+in a bottom section separated by a divider. If only one section has entries, the divider
+is omitted.
+
 ## Setup
 
 The default configuration assumes that you have a file structure like this:

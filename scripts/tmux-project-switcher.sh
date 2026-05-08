@@ -32,13 +32,28 @@ ENTRIES=$("$BINARY" \
     --project-depth "$TMUX_PROJECT_SWITCHER_PROJECT_DEPTH" \
     --name-depth "$TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT")
 
-SESSION_NAME=$(printf '%s\n' "$ENTRIES" | cut -f1 | eval "$TMUX_PROJECT_SWITCHER_FZF_COMMAND" || true)
+while true; do
+    SESSION_NAME=$(printf '%s\n' "$ENTRIES" | cut -f2 | eval "$TMUX_PROJECT_SWITCHER_FZF_COMMAND" || true)
 
-if [ -z "$SESSION_NAME" ]; then
-    exit 0
-fi
+    if [ -z "$SESSION_NAME" ]; then
+        exit 0
+    fi
 
-PATH_FOR_SESSION=$(printf '%s\n' "$ENTRIES" | awk -F'\t' -v target="$SESSION_NAME" '($1 == target) { print $2; exit }')
+    ENTRY=$(printf '%s\n' "$ENTRIES" | awk -F'\t' -v target="$SESSION_NAME" '($2 == target) { print $1 "\t" $3; exit }')
+
+    if [ -z "$ENTRY" ]; then
+        echo "tmux-project-switcher: selected entry '$SESSION_NAME' was not found" >&2
+        exit 1
+    fi
+
+    IFS=$'\t' read -r ENTRY_KIND PATH_FOR_SESSION <<<"$ENTRY"
+
+    if [ "$ENTRY_KIND" = "divider" ]; then
+        continue
+    fi
+
+    break
+done
 
 if [ -n "$PATH_FOR_SESSION" ]; then
     if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
