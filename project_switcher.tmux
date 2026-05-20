@@ -8,3 +8,10 @@ ASSIGNED_KEY=${ASSIGNED_KEY:-'-n C-M-p'}
 KEY_ARRAY=("$ASSIGNED_KEY")
 
 tmux bind-key ${KEY_ARRAY[@]} run-shell "$CURRENT_DIR/scripts/tmux-project-switcher.sh"
+
+# ctrl + option + O as default workmux shortcut, without prefix
+WORKMUX_KEY=$(tmux show-option -gqv "@switcher-workmux-key")
+WORKMUX_KEY=${WORKMUX_KEY:-'-n C-M-o'}
+WORKMUX_KEY_ARRAY=("$WORKMUX_KEY")
+
+tmux bind-key ${WORKMUX_KEY_ARRAY[@]} run-shell "$CURRENT_DIR/scripts/workmux-dashboard.sh"

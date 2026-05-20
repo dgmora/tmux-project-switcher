@@ -27,7 +27,7 @@ export TMUX_PROJECT_SWITCHER_PROJECT_DEPTH=${TMUX_PROJECT_SWITCHER_PROJECT_DEPTH
 export TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT=${TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT:-2}
 # --no-sort keeps fzf from re-ranking matches while typing, which preserves the
 # project/session sections emitted by the helper.
-export TMUX_PROJECT_SWITCHER_FZF_COMMAND=${TMUX_PROJECT_SWITCHER_FZF_COMMAND:-"fzf-tmux -w80% -h100% --no-sort --preview ''"}
+export TMUX_PROJECT_SWITCHER_FZF_COMMAND=${TMUX_PROJECT_SWITCHER_FZF_COMMAND:-"fzf-tmux -w95% -h95% --no-sort --preview ''"}
 
 ENTRIES=$("$BINARY" \
     --root "$TMUX_PROJECT_SWITCHER_ROOT_FOLDER" \

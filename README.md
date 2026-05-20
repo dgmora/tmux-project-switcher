@@ -34,7 +34,9 @@ set -g @plugin 'dgmora/tmux-project-switcher'
 
 ## Usage
 
-Follow the setup section and use `ctrl + opt + p` to see a list of repos/sessions. Note
+Follow the setup section and use `ctrl + opt + p` to see a list of repos/sessions. Use
+`ctrl + opt + o` to open `workmux dashboard` in a larger popup when
+[`workmux`](https://github.com/dgmora/workmux) is available in `PATH`. Note
 that it's expected that you are within tmux when running this.
 
 Projects without a running tmux session are shown in the top section of the picker.
@@ -81,6 +83,9 @@ set -g @switcher-key 'C-M-t' # This would be ctrl + M + t with prefix
 set -g @switcher-key '-n C-M-i' # This would be ctrl + M + i without prefix
 ```
 
+You can overwrite the **workmux dashboard key** with `@switcher-workmux-key`.
+The default is `-n C-M-o`, so `ctrl + opt + O` without prefix.
+
 Note that with some keys you can have issues with `vim`, so it might be that some of them don't work.
 
 To overwrite the **base folder**, these settings are taken into account: `GH_BASE_DIR` if set
@@ -90,7 +95,7 @@ For the **depth**: `TMUX_PROJECT_SWITCHER_PROJECT_DEPTH` if set, or `3`
 
 For the number of folders used to **name** the session: `TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT` if set,  `2`
 
-To change the **popup itself**, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`. The default is `fzf-tmux -w80% -h100% --no-sort --preview ''`.
+To change the **popup itself**, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`. The default is `fzf-tmux -w95% -h95% --no-sort --preview ''`.
 Keep `--no-sort` if you want the project/session sections to stay grouped while searching.
 
 ## Credits
