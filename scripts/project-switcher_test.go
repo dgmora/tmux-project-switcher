@@ -20,9 +20,9 @@ func TestMergeEntriesMixedSections(t *testing.T) {
 	got := mergeEntries(projects, sessions)
 
 	want := []entry{
-		{kind: entryKindSession, name: " feature" + sessionMarker, target: " feature"},
-		{kind: entryKindSession, name: "acme/bravo" + sessionMarker, path: "/src/acme/bravo", target: "acme/bravo"},
-		{kind: entryKindSession, name: "detached" + sessionMarker, target: "detached"},
+		{kind: entryKindSession, name: sessionMarker + " feature", target: " feature"},
+		{kind: entryKindSession, name: sessionMarker + "acme/bravo", path: "/src/acme/bravo", target: "acme/bravo"},
+		{kind: entryKindSession, name: sessionMarker + "detached", target: "detached"},
 		{kind: entryKindDivider, name: dividerName},
 		{kind: entryKindFolder, name: "acme/alpha", path: "/src/acme/alpha", target: "acme/alpha"},
 		{kind: entryKindFolder, name: "acme/charlie", path: "/src/acme/charlie", target: "acme/charlie"},
@@ -61,13 +61,13 @@ func TestMergeEntriesWorktreeSessionMatchedByPath(t *testing.T) {
 		"user/bar":      "/src/host/user/bar",
 	}
 	sessions := []sessionInfo{
-		{name: "◆main-handle", path: "/src/host/user/foo/main"},
+		{name: "wm-main-handle", path: "/src/host/user/foo/main"},
 	}
 
 	got := mergeEntries(projects, sessions)
 
 	want := []entry{
-		{kind: entryKindSession, name: "user/foo/main" + sessionMarker, path: "/src/host/user/foo/main", target: "◆main-handle"},
+		{kind: entryKindSession, name: sessionMarker + "user/foo/main", path: "/src/host/user/foo/main", target: "wm-main-handle"},
 		{kind: entryKindDivider, name: dividerName},
 		{kind: entryKindFolder, name: "user/bar", path: "/src/host/user/bar", target: "user/bar"},
 	}
@@ -140,10 +140,10 @@ func TestMergeEntriesOnlySessionsOmitsDivider(t *testing.T) {
 	got := mergeEntries(nil, sessions)
 
 	want := []entry{
-		{kind: entryKindSession, name: " bugfix" + sessionMarker, target: " bugfix"},
-		{kind: entryKindSession, name: " feature" + sessionMarker, target: " feature"},
-		{kind: entryKindSession, name: "alpha" + sessionMarker, target: "alpha"},
-		{kind: entryKindSession, name: "detached" + sessionMarker, target: "detached"},
+		{kind: entryKindSession, name: sessionMarker + " bugfix", target: " bugfix"},
+		{kind: entryKindSession, name: sessionMarker + " feature", target: " feature"},
+		{kind: entryKindSession, name: sessionMarker + "alpha", target: "alpha"},
+		{kind: entryKindSession, name: sessionMarker + "detached", target: "detached"},
 	}
 
 	if !reflect.DeepEqual(got, want) {

@@ -29,10 +29,12 @@ const (
 	sessionBranchPrefix = ""
 )
 
-// sessionMarker is appended to the display text of session rows. fzf drops the
+// sessionMarker is prepended to the display text of session rows. fzf drops the
 // section divider while you type, so this marker is what distinguishes a live
-// session from a plain folder once both are filtered into the same view.
-const sessionMarker = "  ◆"
+// session from a plain folder once both are filtered into the same view. The glyph
+// is workmux's own native session prefix (nf-oct-git_branch + space), so our
+// de-duplicated rows render identically to real workmux session rows.
+const sessionMarker = " "
 
 type entry struct {
 	kind   entryKind
@@ -146,7 +148,7 @@ func mergeEntries(projects map[string]string, sessions []sessionInfo) []entry {
 			// Display the project path (with context), but switch to the real session.
 			sessionEntries = append(sessionEntries, entry{
 				kind:   entryKindSession,
-				name:   projName + sessionMarker,
+				name:   sessionMarker + projName,
 				path:   projPath,
 				target: sess.name,
 			})
@@ -154,7 +156,7 @@ func mergeEntries(projects map[string]string, sessions []sessionInfo) []entry {
 		}
 		sessionEntries = append(sessionEntries, entry{
 			kind:   entryKindSession,
-			name:   sess.name + sessionMarker,
+			name:   sessionMarker + sess.name,
 			target: sess.name,
 		})
 	}
