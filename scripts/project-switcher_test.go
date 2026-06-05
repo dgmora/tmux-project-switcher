@@ -13,17 +13,19 @@ func TestMergeEntriesMixedSections(t *testing.T) {
 		"acme/bravo":   "/src/acme/bravo",
 		"acme/charlie": "/src/acme/charlie",
 	}
-	sessions := []string{"acme/bravo", "detached", " feature", "detached", ""}
+	sessions := []sessionInfo{
+		{name: "acme/bravo"}, {name: "detached"}, {name: " feature"}, {name: "detached"}, {name: ""},
+	}
 
 	got := mergeEntries(projects, sessions)
 
 	want := []entry{
-		{kind: entryKindSession, name: " feature"},
-		{kind: entryKindSession, name: "acme/bravo", path: "/src/acme/bravo"},
-		{kind: entryKindSession, name: "detached"},
+		{kind: entryKindSession, name: " feature" + sessionMarker, target: " feature"},
+		{kind: entryKindSession, name: "acme/bravo" + sessionMarker, path: "/src/acme/bravo", target: "acme/bravo"},
+		{kind: entryKindSession, name: "detached" + sessionMarker, target: "detached"},
 		{kind: entryKindDivider, name: dividerName},
-		{kind: entryKindFolder, name: "acme/alpha", path: "/src/acme/alpha"},
-		{kind: entryKindFolder, name: "acme/charlie", path: "/src/acme/charlie"},
+		{kind: entryKindFolder, name: "acme/alpha", path: "/src/acme/alpha", target: "acme/alpha"},
+		{kind: entryKindFolder, name: "acme/charlie", path: "/src/acme/charlie", target: "acme/charlie"},
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -40,8 +42,34 @@ func TestMergeEntriesWithoutSessionsOmitsDivider(t *testing.T) {
 	got := mergeEntries(projects, nil)
 
 	want := []entry{
-		{kind: entryKindFolder, name: "acme/alpha", path: "/src/acme/alpha"},
-		{kind: entryKindFolder, name: "acme/bravo", path: "/src/acme/bravo"},
+		{kind: entryKindFolder, name: "acme/alpha", path: "/src/acme/alpha", target: "acme/alpha"},
+		{kind: entryKindFolder, name: "acme/bravo", path: "/src/acme/bravo", target: "acme/bravo"},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("mergeEntries() mismatch\nwant: %#v\ngot:  %#v", want, got)
+	}
+}
+
+// TestMergeEntriesWorktreeSessionMatchedByPath covers the workmux case: the session
+// name ("<prefix><handle>") does not match the worktree folder's project name, but
+// its session_path does — so the two must be paired by path (folder suppressed) and
+// the entry must switch to the real session name.
+func TestMergeEntriesWorktreeSessionMatchedByPath(t *testing.T) {
+	projects := map[string]string{
+		"user/foo/main": "/src/host/user/foo/main",
+		"user/bar":      "/src/host/user/bar",
+	}
+	sessions := []sessionInfo{
+		{name: "◆main-handle", path: "/src/host/user/foo/main"},
+	}
+
+	got := mergeEntries(projects, sessions)
+
+	want := []entry{
+		{kind: entryKindSession, name: "user/foo/main" + sessionMarker, path: "/src/host/user/foo/main", target: "◆main-handle"},
+		{kind: entryKindDivider, name: dividerName},
+		{kind: entryKindFolder, name: "user/bar", path: "/src/host/user/bar", target: "user/bar"},
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -105,15 +133,17 @@ func TestCollectProjectsWorktreeAware(t *testing.T) {
 }
 
 func TestMergeEntriesOnlySessionsOmitsDivider(t *testing.T) {
-	sessions := []string{"detached", "alpha", " feature", " bugfix", "detached"}
+	sessions := []sessionInfo{
+		{name: "detached"}, {name: "alpha"}, {name: " feature"}, {name: " bugfix"}, {name: "detached"},
+	}
 
 	got := mergeEntries(nil, sessions)
 
 	want := []entry{
-		{kind: entryKindSession, name: " bugfix"},
-		{kind: entryKindSession, name: " feature"},
-		{kind: entryKindSession, name: "alpha"},
-		{kind: entryKindSession, name: "detached"},
+		{kind: entryKindSession, name: " bugfix" + sessionMarker, target: " bugfix"},
+		{kind: entryKindSession, name: " feature" + sessionMarker, target: " feature"},
+		{kind: entryKindSession, name: "alpha" + sessionMarker, target: "alpha"},
+		{kind: entryKindSession, name: "detached" + sessionMarker, target: "detached"},
 	}
 
 	if !reflect.DeepEqual(got, want) {

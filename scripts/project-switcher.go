@@ -29,8 +29,19 @@ const (
 	sessionBranchPrefix = ""
 )
 
+// sessionMarker is appended to the display text of session rows. fzf drops the
+// section divider while you type, so this marker is what distinguishes a live
+// session from a plain folder once both are filtered into the same view.
+const sessionMarker = "  ◆"
+
 type entry struct {
-	kind entryKind
+	kind   entryKind
+	name   string // display text (fzf column)
+	path   string // project dir, used for `tmux new-session -c`
+	target string // tmux session name: has-session / switch-client / new-session -s
+}
+
+type sessionInfo struct {
 	name string
 	path string
 }
@@ -59,7 +70,7 @@ func main() {
 	}
 
 	projectCh := make(chan result[map[string]string], 1)
-	sessionCh := make(chan result[[]string], 1)
+	sessionCh := make(chan result[[]sessionInfo], 1)
 
 	go func() {
 		data, err := collectProjects(cfg)
@@ -68,7 +79,7 @@ func main() {
 
 	go func() {
 		data, err := listSessions()
-		sessionCh <- result[[]string]{data: data, err: err}
+		sessionCh <- result[[]sessionInfo]{data: data, err: err}
 	}()
 
 	projectRes := <-projectCh
@@ -83,7 +94,7 @@ func main() {
 
 	entries := mergeEntries(projectRes.data, sessionRes.data)
 	for _, e := range entries {
-		fmt.Printf("%s\t%s\t%s\n", e.kind, e.name, e.path)
+		fmt.Printf("%s\t%s\t%s\t%s\n", e.kind, e.name, e.path, e.target)
 	}
 }
 
@@ -92,37 +103,68 @@ type result[T any] struct {
 	err  error
 }
 
-func mergeEntries(projects map[string]string, sessions []string) []entry {
-	sessionSet := make(map[string]struct{}, len(sessions))
+func mergeEntries(projects map[string]string, sessions []sessionInfo) []entry {
+	// Index projects by directory so a session can be paired with the folder it was
+	// opened from. workmux roots each worktree session at the worktree dir, so the
+	// session's #{session_path} equals the project path even though their names differ
+	// (folder: "$user/$repo/$worktree"; session: "<prefix><handle>").
+	byPath := make(map[string]string, len(projects))
+	for name, path := range projects {
+		byPath[filepath.Clean(path)] = name
+	}
+
+	matched := make(map[string]struct{}, len(sessions)) // project names represented by a session
+	seenSessions := make(map[string]struct{}, len(sessions))
+	sessionEntries := make([]entry, 0, len(sessions))
+
 	for _, sess := range sessions {
-		if sess == "" {
+		if sess.name == "" {
 			continue
 		}
-		sessionSet[sess] = struct{}{}
+		if _, dup := seenSessions[sess.name]; dup {
+			continue
+		}
+		seenSessions[sess.name] = struct{}{}
+
+		// Resolve the project this session represents: by path first (handles
+		// worktrees, whose names never match), then by name (plain repos / sessions
+		// created by this switcher).
+		projName, projPath := "", ""
+		if sess.path != "" {
+			if n, ok := byPath[filepath.Clean(sess.path)]; ok {
+				projName, projPath = n, projects[n]
+			}
+		}
+		if projName == "" {
+			if p, ok := projects[sess.name]; ok {
+				projName, projPath = sess.name, p
+			}
+		}
+
+		if projName != "" {
+			matched[projName] = struct{}{}
+			// Display the project path (with context), but switch to the real session.
+			sessionEntries = append(sessionEntries, entry{
+				kind:   entryKindSession,
+				name:   projName + sessionMarker,
+				path:   projPath,
+				target: sess.name,
+			})
+			continue
+		}
+		sessionEntries = append(sessionEntries, entry{
+			kind:   entryKindSession,
+			name:   sess.name + sessionMarker,
+			target: sess.name,
+		})
 	}
 
 	folders := make([]entry, 0, len(projects))
-	sessionEntries := make([]entry, 0, len(sessions))
-	seenSessions := make(map[string]struct{}, len(sessions))
-
 	for name, path := range projects {
-		if _, ok := sessionSet[name]; ok {
-			sessionEntries = append(sessionEntries, entry{kind: entryKindSession, name: name, path: path})
-			seenSessions[name] = struct{}{}
+		if _, ok := matched[name]; ok {
 			continue
 		}
-		folders = append(folders, entry{kind: entryKindFolder, name: name, path: path})
-	}
-
-	for _, sess := range sessions {
-		if sess == "" {
-			continue
-		}
-		if _, ok := seenSessions[sess]; ok {
-			continue
-		}
-		sessionEntries = append(sessionEntries, entry{kind: entryKindSession, name: sess})
-		seenSessions[sess] = struct{}{}
+		folders = append(folders, entry{kind: entryKindFolder, name: name, path: path, target: name})
 	}
 
 	sortEntriesByName(folders)
@@ -195,25 +237,32 @@ func collectProjects(cfg config) (map[string]string, error) {
 	return projects, nil
 }
 
-func listSessions() ([]string, error) {
-	cmd := exec.Command("tmux", "list-sessions", "-F", "#S")
+func listSessions() ([]sessionInfo, error) {
+	// session_path is the session's start directory; unlike pane_current_path it is
+	// stable and equals the worktree dir workmux passed to `new-session -c`.
+	cmd := exec.Command("tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}")
 	output, err := cmd.Output()
 	if err != nil {
 		var execErr *exec.ExitError
 		if errors.As(err, &execErr) {
 			// No tmux server running; treat as zero sessions.
-			return []string{}, nil
+			return []sessionInfo{}, nil
 		}
 		return nil, fmt.Errorf("tmux list-sessions: %w", err)
 	}
 
 	lines := strings.Split(string(output), "\n")
-	sessions := make([]string, 0, len(lines))
+	sessions := make([]sessionInfo, 0, len(lines))
 	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" {
-			sessions = append(sessions, trimmed)
+		if strings.TrimSpace(line) == "" {
+			continue
 		}
+		name, path, _ := strings.Cut(line, "\t")
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		sessions = append(sessions, sessionInfo{name: name, path: strings.TrimSpace(path)})
 	}
 
 	return sessions, nil

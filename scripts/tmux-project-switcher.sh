@@ -35,20 +35,23 @@ ENTRIES=$("$BINARY" \
     --name-depth "$TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT")
 
 while true; do
-    SESSION_NAME=$(printf '%s\n' "$ENTRIES" | cut -f2 | eval "$TMUX_PROJECT_SWITCHER_FZF_COMMAND" || true)
+    # Column 2 is the display text shown in fzf; column 4 is the tmux session name to
+    # act on (they differ for worktrees, whose display is the path but whose session
+    # name is workmux's "<prefix><handle>").
+    SELECTED=$(printf '%s\n' "$ENTRIES" | cut -f2 | eval "$TMUX_PROJECT_SWITCHER_FZF_COMMAND" || true)
 
-    if [ -z "$SESSION_NAME" ]; then
+    if [ -z "$SELECTED" ]; then
         exit 0
     fi
 
-    ENTRY=$(printf '%s\n' "$ENTRIES" | awk -F'\t' -v target="$SESSION_NAME" '($2 == target) { print $1 "\t" $3; exit }')
+    ENTRY=$(printf '%s\n' "$ENTRIES" | awk -F'\t' -v target="$SELECTED" '($2 == target) { print $1 "\t" $3 "\t" $4; exit }')
 
     if [ -z "$ENTRY" ]; then
-        echo "tmux-project-switcher: selected entry '$SESSION_NAME' was not found" >&2
+        echo "tmux-project-switcher: selected entry '$SELECTED' was not found" >&2
         exit 1
     fi
 
-    IFS=$'\t' read -r ENTRY_KIND PATH_FOR_SESSION <<<"$ENTRY"
+    IFS=$'\t' read -r ENTRY_KIND PATH_FOR_SESSION TMUX_TARGET <<<"$ENTRY"
 
     if [ "$ENTRY_KIND" = "divider" ]; then
         continue
@@ -58,14 +61,14 @@ while true; do
 done
 
 if [ -n "$PATH_FOR_SESSION" ]; then
-    if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-        tmux new-session -d -s "$SESSION_NAME" -c "$PATH_FOR_SESSION"
+    if ! tmux has-session -t "$TMUX_TARGET" 2>/dev/null; then
+        tmux new-session -d -s "$TMUX_TARGET" -c "$PATH_FOR_SESSION"
     fi
 else
-    if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-        echo "tmux-project-switcher: session '$SESSION_NAME' has no project path and does not exist" >&2
+    if ! tmux has-session -t "$TMUX_TARGET" 2>/dev/null; then
+        echo "tmux-project-switcher: session '$TMUX_TARGET' has no project path and does not exist" >&2
         exit 1
     fi
 fi
 
-tmux switch-client -t "$SESSION_NAME"
+tmux switch-client -t "$TMUX_TARGET"
