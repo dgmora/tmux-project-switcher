@@ -181,8 +181,7 @@ func collectProjects(cfg config) (map[string]string, error) {
 		}
 
 		if depth == cfg.projectDepth {
-			name := projectNameFromPath(path, cfg.nameDepth)
-			projects[name] = path
+			recordProject(projects, path, cfg)
 			return filepath.SkipDir
 		}
 
@@ -237,6 +236,52 @@ func sortSessionEntriesForDefaultLayout(entries []entry) {
 		}
 		return entries[i].name < entries[j].name
 	})
+}
+
+// recordProject classifies a directory found at the configured project depth.
+// A plain working tree (a .git entry exists — directory or file) is recorded as-is.
+// A worktree container (no .git, but holds child worktrees) is expanded: each child
+// worktree is recorded one level deeper, with the child appended to the project name.
+// Anything else keeps the legacy behavior and is recorded as-is.
+func recordProject(projects map[string]string, path string, cfg config) {
+	if isWorktree(path) {
+		projects[projectNameFromPath(path, cfg.nameDepth)] = path
+		return
+	}
+	children := worktreeChildren(path)
+	if len(children) == 0 {
+		projects[projectNameFromPath(path, cfg.nameDepth)] = path
+		return
+	}
+	for _, child := range children {
+		projects[projectNameFromPath(child, cfg.nameDepth+1)] = child
+	}
+}
+
+// isWorktree reports whether dir contains a .git entry (directory for a plain repo or
+// main worktree, file for a linked worktree).
+func isWorktree(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, ".git"))
+	return err == nil
+}
+
+// worktreeChildren returns the immediate subdirectories of dir that are themselves worktrees.
+func worktreeChildren(dir string) []string {
+	dirents, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var children []string
+	for _, de := range dirents {
+		if !de.IsDir() {
+			continue
+		}
+		child := filepath.Join(dir, de.Name())
+		if isWorktree(child) {
+			children = append(children, child)
+		}
+	}
+	return children
 }
 
 func projectNameFromPath(path string, depth int) string {

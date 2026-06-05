@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -44,6 +46,61 @@ func TestMergeEntriesWithoutSessionsOmitsDivider(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("mergeEntries() mismatch\nwant: %#v\ngot:  %#v", want, got)
+	}
+}
+
+func TestCollectProjectsWorktreeAware(t *testing.T) {
+	root := t.TempDir()
+
+	mkdir := func(parts ...string) string {
+		dir := filepath.Join(append([]string{root}, parts...)...)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %v: %v", parts, err)
+		}
+		return dir
+	}
+	gitDir := func(parts ...string) {
+		if err := os.Mkdir(filepath.Join(append([]string{root}, append(parts, ".git")...)...), 0o755); err != nil {
+			t.Fatalf("mkdir .git %v: %v", parts, err)
+		}
+	}
+	gitFile := func(parts ...string) {
+		if err := os.WriteFile(filepath.Join(append([]string{root}, append(parts, ".git")...)...), []byte("gitdir: elsewhere\n"), 0o644); err != nil {
+			t.Fatalf("write .git %v: %v", parts, err)
+		}
+	}
+
+	// Plain repo: .git directory at project depth.
+	plain := mkdir("host", "user", "plainrepo")
+	gitDir("host", "user", "plainrepo")
+
+	// Worktree container: no .git of its own, holds worktree children plus a stray dir.
+	mkdir("host", "user", "foo", "main")
+	gitDir("host", "user", "foo", "main") // main worktree -> .git directory
+	mkdir("host", "user", "foo", "feat")
+	gitFile("host", "user", "foo", "feat") // linked worktree -> .git file
+	mkdir("host", "user", "foo", "notes")  // not a worktree -> skipped
+	mainWT := filepath.Join(root, "host", "user", "foo", "main")
+	featWT := filepath.Join(root, "host", "user", "foo", "feat")
+
+	// Plain non-git folder with a non-git child: legacy fallback, recorded as-is.
+	plainFolder := mkdir("host", "user", "plainfolder", "sub")
+	plainFolder = filepath.Dir(plainFolder)
+
+	got, err := collectProjects(config{root: root, projectDepth: 3, nameDepth: 2})
+	if err != nil {
+		t.Fatalf("collectProjects: %v", err)
+	}
+
+	want := map[string]string{
+		"user/plainrepo":   plain,
+		"user/foo/main":    mainWT,
+		"user/foo/feat":    featWT,
+		"user/plainfolder": plainFolder,
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("collectProjects() mismatch\nwant: %#v\ngot:  %#v", want, got)
 	}
 }
 
