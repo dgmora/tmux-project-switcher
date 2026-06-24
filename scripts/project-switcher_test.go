@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestMergeEntriesMixedSections(t *testing.T) {
+func TestSessionEntriesAndMatched(t *testing.T) {
 	projects := map[string]string{
 		"acme/alpha":   "/src/acme/alpha",
 		"acme/bravo":   "/src/acme/bravo",
@@ -17,29 +17,53 @@ func TestMergeEntriesMixedSections(t *testing.T) {
 		{name: "acme/bravo"}, {name: "detached"}, {name: " feature"}, {name: "detached"}, {name: ""},
 	}
 
-	got := mergeEntries(projects, sessions)
+	got, matched := sessionEntriesFor(projects, sessions)
 
 	want := []entry{
 		{kind: entryKindSession, name: sessionMarker + " feature", target: " feature"},
 		{kind: entryKindSession, name: sessionMarker + "acme/bravo", path: "/src/acme/bravo", target: "acme/bravo"},
 		{kind: entryKindSession, name: sessionMarker + "detached", target: "detached"},
-		{kind: entryKindDivider, name: dividerName},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("sessionEntriesFor() mismatch\nwant: %#v\ngot:  %#v", want, got)
+	}
+
+	wantMatched := map[string]struct{}{"acme/bravo": {}}
+	if !reflect.DeepEqual(matched, wantMatched) {
+		t.Fatalf("matched mismatch\nwant: %#v\ngot:  %#v", wantMatched, matched)
+	}
+}
+
+// folderEntries lists only projects without a running session, so a project paired
+// with a session ("acme/bravo") must be excluded.
+func TestFolderEntriesExcludesMatched(t *testing.T) {
+	projects := map[string]string{
+		"acme/alpha":   "/src/acme/alpha",
+		"acme/bravo":   "/src/acme/bravo",
+		"acme/charlie": "/src/acme/charlie",
+	}
+	matched := map[string]struct{}{"acme/bravo": {}}
+
+	got := folderEntries(projects, matched)
+
+	want := []entry{
 		{kind: entryKindFolder, name: "acme/alpha", path: "/src/acme/alpha", target: "acme/alpha"},
 		{kind: entryKindFolder, name: "acme/charlie", path: "/src/acme/charlie", target: "acme/charlie"},
 	}
 
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("mergeEntries() mismatch\nwant: %#v\ngot:  %#v", want, got)
+		t.Fatalf("folderEntries() mismatch\nwant: %#v\ngot:  %#v", want, got)
 	}
 }
 
-func TestMergeEntriesWithoutSessionsOmitsDivider(t *testing.T) {
+func TestFolderEntriesAllWhenNoSessions(t *testing.T) {
 	projects := map[string]string{
 		"acme/alpha": "/src/acme/alpha",
 		"acme/bravo": "/src/acme/bravo",
 	}
 
-	got := mergeEntries(projects, nil)
+	got := folderEntries(projects, map[string]struct{}{})
 
 	want := []entry{
 		{kind: entryKindFolder, name: "acme/alpha", path: "/src/acme/alpha", target: "acme/alpha"},
@@ -47,15 +71,15 @@ func TestMergeEntriesWithoutSessionsOmitsDivider(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("mergeEntries() mismatch\nwant: %#v\ngot:  %#v", want, got)
+		t.Fatalf("folderEntries() mismatch\nwant: %#v\ngot:  %#v", want, got)
 	}
 }
 
-// TestMergeEntriesWorktreeSessionMatchedByPath covers the workmux case: the session
+// TestSessionEntriesWorktreeMatchedByPath covers the workmux case: the session
 // name ("<prefix><handle>") does not match the worktree folder's project name, but
-// its session_path does — so the two must be paired by path (folder suppressed) and
-// the entry must switch to the real session name.
-func TestMergeEntriesWorktreeSessionMatchedByPath(t *testing.T) {
+// its session_path does — so the two must be paired by path (folder suppressed via
+// the matched set) and the entry must switch to the real session name.
+func TestSessionEntriesWorktreeMatchedByPath(t *testing.T) {
 	projects := map[string]string{
 		"user/foo/main": "/src/host/user/foo/main",
 		"user/bar":      "/src/host/user/bar",
@@ -64,16 +88,27 @@ func TestMergeEntriesWorktreeSessionMatchedByPath(t *testing.T) {
 		{name: "wm-main-handle", path: "/src/host/user/foo/main"},
 	}
 
-	got := mergeEntries(projects, sessions)
+	got, matched := sessionEntriesFor(projects, sessions)
 
 	want := []entry{
 		{kind: entryKindSession, name: sessionMarker + "user/foo/main", path: "/src/host/user/foo/main", target: "wm-main-handle"},
-		{kind: entryKindDivider, name: dividerName},
-		{kind: entryKindFolder, name: "user/bar", path: "/src/host/user/bar", target: "user/bar"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("sessionEntriesFor() mismatch\nwant: %#v\ngot:  %#v", want, got)
 	}
 
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("mergeEntries() mismatch\nwant: %#v\ngot:  %#v", want, got)
+	wantMatched := map[string]struct{}{"user/foo/main": {}}
+	if !reflect.DeepEqual(matched, wantMatched) {
+		t.Fatalf("matched mismatch\nwant: %#v\ngot:  %#v", wantMatched, matched)
+	}
+
+	// The matched worktree must not reappear as a folder.
+	folders := folderEntries(projects, matched)
+	wantFolders := []entry{
+		{kind: entryKindFolder, name: "user/bar", path: "/src/host/user/bar", target: "user/bar"},
+	}
+	if !reflect.DeepEqual(folders, wantFolders) {
+		t.Fatalf("folderEntries() mismatch\nwant: %#v\ngot:  %#v", wantFolders, folders)
 	}
 }
 
@@ -132,12 +167,12 @@ func TestCollectProjectsWorktreeAware(t *testing.T) {
 	}
 }
 
-func TestMergeEntriesOnlySessionsOmitsDivider(t *testing.T) {
+func TestSessionEntriesOnly(t *testing.T) {
 	sessions := []sessionInfo{
 		{name: "detached"}, {name: "alpha"}, {name: " feature"}, {name: " bugfix"}, {name: "detached"},
 	}
 
-	got := mergeEntries(nil, sessions)
+	got, matched := sessionEntriesFor(nil, sessions)
 
 	want := []entry{
 		{kind: entryKindSession, name: sessionMarker + " bugfix", target: " bugfix"},
@@ -147,6 +182,9 @@ func TestMergeEntriesOnlySessionsOmitsDivider(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("mergeEntries() mismatch\nwant: %#v\ngot:  %#v", want, got)
+		t.Fatalf("sessionEntriesFor() mismatch\nwant: %#v\ngot:  %#v", want, got)
+	}
+	if len(matched) != 0 {
+		t.Fatalf("matched should be empty, got: %#v", matched)
 	}
 }

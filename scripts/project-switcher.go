@@ -13,6 +13,7 @@ import (
 )
 
 type config struct {
+	mode         string
 	root         string
 	projectDepth int
 	nameDepth    int
@@ -23,17 +24,16 @@ type entryKind string
 const (
 	entryKindFolder  entryKind = "folder"
 	entryKindSession entryKind = "session"
-	entryKindDivider entryKind = "divider"
 
-	dividerName         = "────────────────────────────────────────────────"
 	sessionBranchPrefix = ""
+
+	modeSessions = "sessions"
+	modeFolders  = "folders"
 )
 
-// sessionMarker is prepended to the display text of session rows. fzf drops the
-// section divider while you type, so this marker is what distinguishes a live
-// session from a plain folder once both are filtered into the same view. The glyph
-// is workmux's own native session prefix (nf-oct-git_branch + space), so our
-// de-duplicated rows render identically to real workmux session rows.
+// sessionMarker is prepended to the display text of session rows. The glyph is
+// workmux's own native session prefix (nf-oct-git_branch + space), so our rows
+// render identically to real workmux session rows.
 const sessionMarker = " "
 
 type entry struct {
@@ -55,15 +55,20 @@ func main() {
 		nameDepth:    envInt("TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT", 2),
 	}
 
+	modeFlag := flag.String("mode", modeSessions, "Which list to emit: sessions or folders")
 	rootFlag := flag.String("root", cfg.root, "Root directory containing projects")
 	depthFlag := flag.Int("project-depth", cfg.projectDepth, "Directory depth to treat as projects")
 	nameDepthFlag := flag.Int("name-depth", cfg.nameDepth, "How many trailing path segments make the project name")
 	flag.Parse()
 
+	cfg.mode = *modeFlag
 	cfg.root = *rootFlag
 	cfg.projectDepth = *depthFlag
 	cfg.nameDepth = *nameDepthFlag
 
+	if cfg.mode != modeSessions && cfg.mode != modeFolders {
+		exitWithError(fmt.Errorf("mode must be %q or %q", modeSessions, modeFolders))
+	}
 	if cfg.projectDepth < 1 {
 		exitWithError(errors.New("project-depth must be >= 1"))
 	}
@@ -94,7 +99,16 @@ func main() {
 		exitWithError(sessionRes.err)
 	}
 
-	entries := mergeEntries(projectRes.data, sessionRes.data)
+	sessions, matched := sessionEntriesFor(projectRes.data, sessionRes.data)
+
+	var entries []entry
+	switch cfg.mode {
+	case modeSessions:
+		entries = sessions
+	case modeFolders:
+		entries = folderEntries(projectRes.data, matched)
+	}
+
 	for _, e := range entries {
 		fmt.Printf("%s\t%s\t%s\t%s\n", e.kind, e.name, e.path, e.target)
 	}
@@ -105,7 +119,11 @@ type result[T any] struct {
 	err  error
 }
 
-func mergeEntries(projects map[string]string, sessions []sessionInfo) []entry {
+// sessionEntriesFor builds the session rows and reports which project names are
+// already represented by a running session. The matched set lets folder mode skip
+// projects that already have a session, so the two pickers never overlap and folder
+// mode can never spawn a duplicate session.
+func sessionEntriesFor(projects map[string]string, sessions []sessionInfo) ([]entry, map[string]struct{}) {
 	// Index projects by directory so a session can be paired with the folder it was
 	// opened from. workmux roots each worktree session at the worktree dir, so the
 	// session's #{session_path} equals the project path even though their names differ
@@ -161,6 +179,14 @@ func mergeEntries(projects map[string]string, sessions []sessionInfo) []entry {
 		})
 	}
 
+	sortSessionEntriesForDefaultLayout(sessionEntries)
+	return sessionEntries, matched
+}
+
+// folderEntries lists projects that do not already have a running session (those
+// live under the sessions picker instead). Selecting one always creates a fresh
+// session, so there is nothing to dedupe at switch time.
+func folderEntries(projects map[string]string, matched map[string]struct{}) []entry {
 	folders := make([]entry, 0, len(projects))
 	for name, path := range projects {
 		if _, ok := matched[name]; ok {
@@ -170,19 +196,7 @@ func mergeEntries(projects map[string]string, sessions []sessionInfo) []entry {
 	}
 
 	sortEntriesByName(folders)
-	sortSessionEntriesForDefaultLayout(sessionEntries)
-
-	entries := make([]entry, 0, len(folders)+len(sessionEntries)+1)
-	// fzf's default layout renders earlier input lines lower in the popup.
-	// Emit entries in reverse visual order so the picker shows folders above
-	// the divider and sessions below it.
-	entries = append(entries, sessionEntries...)
-	if len(folders) > 0 && len(sessionEntries) > 0 {
-		entries = append(entries, entry{kind: entryKindDivider, name: dividerName})
-	}
-	entries = append(entries, folders...)
-
-	return entries
+	return folders
 }
 
 func collectProjects(cfg config) (map[string]string, error) {

@@ -34,15 +34,18 @@ set -g @plugin 'dgmora/tmux-project-switcher'
 
 ## Usage
 
-Follow the setup section and use `ctrl + opt + p` to see a list of repos/sessions. Use
-`ctrl + opt + o` to open `workmux dashboard` in a larger popup when
-[`workmux`](https://github.com/dgmora/workmux) is available in `PATH`. Note
-that it's expected that you are within tmux when running this.
+Follow the setup section and use:
 
-Projects without a running tmux session are shown in the top section of the picker.
-Entries that already have a tmux session, plus any unmatched tmux sessions, are shown
-in a bottom section separated by a divider. If only one section has entries, the divider
-is omitted.
+- `ctrl + opt + p` to fuzzy-find **running tmux sessions** and switch to one.
+- `ctrl + opt + o` to fuzzy-find **project folders that have no session yet** and
+  open one, creating its tmux session in the right directory.
+
+Note that it's expected that you are within tmux when running this.
+
+Each picker shows a single homogeneous list — sessions or session-less folders — so
+fzf ranks matches by fuzzy score as you type. A project with a running session only
+appears under `ctrl + opt + p`; once you close its session it shows up again under
+`ctrl + opt + o`.
 
 ## Setup
 
@@ -83,7 +86,7 @@ set -g @switcher-key 'C-M-t' # This would be ctrl + M + t with prefix
 set -g @switcher-key '-n C-M-i' # This would be ctrl + M + i without prefix
 ```
 
-You can overwrite the **workmux dashboard key** with `@switcher-workmux-key`.
+You can overwrite the **folders key** with `@switcher-folders-key`.
 The default is `-n C-M-o`, so `ctrl + opt + O` without prefix.
 
 Note that with some keys you can have issues with `vim`, so it might be that some of them don't work.
@@ -95,8 +98,7 @@ For the **depth**: `TMUX_PROJECT_SWITCHER_PROJECT_DEPTH` if set, or `3`
 
 For the number of folders used to **name** the session: `TMUX_PROJECT_SWITCHER_FOLDERS_AMOUNT` if set,  `2`
 
-To change the **popup itself**, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`. The default is `fzf-tmux -w95% -h95% --no-sort --preview ''`.
-Keep `--no-sort` if you want the project/session sections to stay grouped while searching.
+To change the **popup itself**, you can change `TMUX_PROJECT_SWITCHER_FZF_COMMAND`. The default is `fzf-tmux -w95% -h95% --preview ''`.
 
 ## Credits
 
