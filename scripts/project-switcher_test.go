@@ -20,9 +20,9 @@ func TestSessionEntriesAndMatched(t *testing.T) {
 	got, matched := sessionEntriesFor(projects, sessions)
 
 	want := []entry{
-		{kind: entryKindSession, name: sessionMarker + " feature", target: " feature"},
-		{kind: entryKindSession, name: sessionMarker + "acme/bravo", path: "/src/acme/bravo", target: "acme/bravo"},
-		{kind: entryKindSession, name: sessionMarker + "detached", target: "detached"},
+		{kind: entryKindSession, name: " feature", target: " feature"},
+		{kind: entryKindSession, name: "acme/bravo", path: "/src/acme/bravo", target: "acme/bravo"},
+		{kind: entryKindSession, name: "detached", target: "detached"},
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -91,7 +91,7 @@ func TestSessionEntriesWorktreeMatchedByPath(t *testing.T) {
 	got, matched := sessionEntriesFor(projects, sessions)
 
 	want := []entry{
-		{kind: entryKindSession, name: sessionMarker + "user/foo/main", path: "/src/host/user/foo/main", target: "wm-main-handle"},
+		{kind: entryKindSession, name: "user/foo/main", path: "/src/host/user/foo/main", target: "wm-main-handle"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("sessionEntriesFor() mismatch\nwant: %#v\ngot:  %#v", want, got)
@@ -175,10 +175,10 @@ func TestSessionEntriesOnly(t *testing.T) {
 	got, matched := sessionEntriesFor(nil, sessions)
 
 	want := []entry{
-		{kind: entryKindSession, name: sessionMarker + " bugfix", target: " bugfix"},
-		{kind: entryKindSession, name: sessionMarker + " feature", target: " feature"},
-		{kind: entryKindSession, name: sessionMarker + "alpha", target: "alpha"},
-		{kind: entryKindSession, name: sessionMarker + "detached", target: "detached"},
+		{kind: entryKindSession, name: " bugfix", target: " bugfix"},
+		{kind: entryKindSession, name: " feature", target: " feature"},
+		{kind: entryKindSession, name: "alpha", target: "alpha"},
+		{kind: entryKindSession, name: "detached", target: "detached"},
 	}
 
 	if !reflect.DeepEqual(got, want) {

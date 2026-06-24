@@ -25,16 +25,9 @@ const (
 	entryKindFolder  entryKind = "folder"
 	entryKindSession entryKind = "session"
 
-	sessionBranchPrefix = ""
-
 	modeSessions = "sessions"
 	modeFolders  = "folders"
 )
-
-// sessionMarker is prepended to the display text of session rows. The glyph is
-// workmux's own native session prefix (nf-oct-git_branch + space), so our rows
-// render identically to real workmux session rows.
-const sessionMarker = " "
 
 type entry struct {
 	kind   entryKind
@@ -166,7 +159,7 @@ func sessionEntriesFor(projects map[string]string, sessions []sessionInfo) ([]en
 			// Display the project path (with context), but switch to the real session.
 			sessionEntries = append(sessionEntries, entry{
 				kind:   entryKindSession,
-				name:   sessionMarker + projName,
+				name:   projName,
 				path:   projPath,
 				target: sess.name,
 			})
@@ -174,12 +167,12 @@ func sessionEntriesFor(projects map[string]string, sessions []sessionInfo) ([]en
 		}
 		sessionEntries = append(sessionEntries, entry{
 			kind:   entryKindSession,
-			name:   sessionMarker + sess.name,
+			name:   sess.name,
 			target: sess.name,
 		})
 	}
 
-	sortSessionEntriesForDefaultLayout(sessionEntries)
+	sortEntriesByName(sessionEntries)
 	return sessionEntries, matched
 }
 
@@ -286,19 +279,6 @@ func listSessions() ([]sessionInfo, error) {
 
 func sortEntriesByName(entries []entry) {
 	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].name < entries[j].name
-	})
-}
-
-func sortSessionEntriesForDefaultLayout(entries []entry) {
-	sort.Slice(entries, func(i, j int) bool {
-		iIsBranch := strings.HasPrefix(entries[i].name, sessionBranchPrefix)
-		jIsBranch := strings.HasPrefix(entries[j].name, sessionBranchPrefix)
-		if iIsBranch != jIsBranch {
-			// Branch sessions are emitted earlier so fzf renders them lower than
-			// regular sessions in the default layout.
-			return iIsBranch
-		}
 		return entries[i].name < entries[j].name
 	})
 }
